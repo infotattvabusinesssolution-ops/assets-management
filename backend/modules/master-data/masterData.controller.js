@@ -1206,17 +1206,18 @@ export async function getSites(req, res, next) {
       try {
         const includeInactive = req.query.includeInactive !== 'false';
         const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-        const tenantClause = tenantCompanyId ? `AND companyId = '${tenantCompanyId}'` : '';
-        const tenantWhere = tenantCompanyId ? `WHERE companyId = '${tenantCompanyId}'` : '';
+        const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
+        const tenantClause = (tenantCompanyId && !isSuperAdmin) ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
+        const tenantWhere = (tenantCompanyId && !isSuperAdmin) ? `WHERE (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
 
         const query = includeInactive
-          ? (tenantCompanyId
+          ? (tenantWhere
               ? `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites ${tenantWhere} ORDER BY name ASC`
               : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites ORDER BY name ASC`)
           : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites WHERE active = 1 ${tenantClause} ORDER BY name ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
         if (Array.isArray(rows)) {
-          if (rows.length === 0 && tenantCompanyId) {
+          if (rows.length === 0 && tenantCompanyId && !isSuperAdmin) {
             return res.json({ success: true, sites: [] });
           }
           if (rows.length > 0) {
@@ -1416,18 +1417,48 @@ export async function createSite(req, res, next) {
     const allForPath = [...inMemoryLocations];
     const computedPath = computeLocationFullPath({ name: cleanName, parentLocation: cleanParent }, allForPath);
 
+    await ensureSitesTable();
+
+    // Resolve target company ID
+    let finalCompanyId = targetCompanyId;
+    if (!finalCompanyId && isDbConnected()) {
+      try {
+        const comp = await prisma.company.findFirst();
+        if (comp) finalCompanyId = comp.id;
+        else {
+          const compRows = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM companies`);
+          if (compRows && compRows.length > 0) finalCompanyId = compRows[0].id;
+        }
+      } catch (_) {}
+    }
+
+    if (!finalCompanyId && isDbConnected()) {
+      try {
+        const defId = 'comp-default';
+        await prisma.$executeRawUnsafe(`
+          IF NOT EXISTS (SELECT 1 FROM companies WHERE id = '${defId}')
+          INSERT INTO companies (id, code, name, currency, active, createdAt, updatedAt)
+          VALUES ('${defId}', 'COMP-001', 'Default Enterprise', 'USD', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+        finalCompanyId = defId;
+      } catch (e) {
+        console.warn('Default company ensure failed:', e.message);
+      }
+    }
+
     const newLoc = {
       id,
       code: cleanCode,
       name: cleanName,
+      companyId: finalCompanyId,
       type: cleanType,
       level: cleanLevel,
       parentLocation: cleanParent,
       fullPath: computedPath,
-      locationLevel1: cleanLvl1,
-      locationLevel2: cleanLvl2,
-      locationLevel3: cleanLvl3,
-      locationLevel4: cleanLvl4,
+      locationLevel1: cleanLvl1 || '',
+      locationLevel2: cleanLvl2 || '',
+      locationLevel3: cleanLvl3 || '',
+      locationLevel4: cleanLvl4 || '',
       city: city || '',
       country: country || '',
       address: cleanAddress,
@@ -1440,39 +1471,21 @@ export async function createSite(req, res, next) {
 
     console.log('📍 [Backend Location Created]:', JSON.stringify(newLoc));
 
-    await ensureSitesTable();
     if (isDbConnected()) {
       try {
-        let firstCompanyId = null;
-        try {
-          const comp = await prisma.company.findFirst();
-          if (comp) firstCompanyId = comp.id;
-          else {
-            const compRows = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM companies`);
-            if (compRows && compRows.length > 0) firstCompanyId = compRows[0].id;
-          }
-        } catch (_) {}
-
-        if (!firstCompanyId) {
-          try {
-            const defId = 'comp-default';
-            await prisma.$executeRawUnsafe(`
-              IF NOT EXISTS (SELECT 1 FROM companies WHERE id = '${defId}')
-              INSERT INTO companies (id, code, name, currency, active, createdAt, updatedAt)
-              VALUES ('${defId}', 'COMP-001', 'Default Enterprise', 'USD', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            `);
-            firstCompanyId = defId;
-          } catch (e) {
-            console.warn('Default company ensure failed:', e.message);
-          }
-        }
+        const sqlLvl1 = (cleanLvl1 && cleanLvl1.trim()) ? `'${cleanLvl1.trim().replace(/'/g, "''")}'` : 'NULL';
+        const sqlLvl2 = (cleanLvl2 && cleanLvl2.trim()) ? `'${cleanLvl2.trim().replace(/'/g, "''")}'` : 'NULL';
+        const sqlLvl3 = (cleanLvl3 && cleanLvl3.trim()) ? `'${cleanLvl3.trim().replace(/'/g, "''")}'` : 'NULL';
+        const sqlLvl4 = (cleanLvl4 && cleanLvl4.trim()) ? `'${cleanLvl4.trim().replace(/'/g, "''")}'` : 'NULL';
+        const sqlCompanyId = finalCompanyId ? `'${finalCompanyId.replace(/'/g, "''")}'` : 'NULL';
 
         await prisma.$executeRawUnsafe(`
           INSERT INTO sites (id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt)
-          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(city || '').replace(/'/g, "''")}', '${(country || '').replace(/'/g, "''")}', ${firstCompanyId ? `'${firstCompanyId}'` : 'NULL'}, '${cleanType}', '${cleanLevel}', '${cleanParent.replace(/'/g, "''")}', '${computedPath.replace(/'/g, "''")}', '${cleanLvl1.replace(/'/g, "''")}', '${cleanLvl2.replace(/'/g, "''")}', '${cleanLvl3.replace(/'/g, "''")}', '${cleanLvl4.replace(/'/g, "''")}', '${cleanAddress.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(city || '').replace(/'/g, "''")}', '${(country || '').replace(/'/g, "''")}', ${sqlCompanyId}, '${cleanType}', '${cleanLevel}', '${cleanParent.replace(/'/g, "''")}', '${computedPath.replace(/'/g, "''")}', ${sqlLvl1}, ${sqlLvl2}, ${sqlLvl3}, ${sqlLvl4}, '${cleanAddress.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
       } catch (dbErr) {
-        console.warn('DB insert sites skipped:', dbErr.message);
+        console.error('DB insert sites error:', dbErr.message);
+        return res.status(500).json({ success: false, message: `Database error inserting location: ${dbErr.message}` });
       }
     }
 
@@ -1619,6 +1632,11 @@ export async function updateSite(req, res, next) {
     await ensureSitesTable();
     if (isDbConnected()) {
       try {
+        const sqlLvl1 = (cleanLvl1 && cleanLvl1.trim()) ? `'${cleanLvl1.trim().replace(/'/g, "''")}'` : 'NULL';
+        const sqlLvl2 = (cleanLvl2 && cleanLvl2.trim()) ? `'${cleanLvl2.trim().replace(/'/g, "''")}'` : 'NULL';
+        const sqlLvl3 = (cleanLvl3 && cleanLvl3.trim()) ? `'${cleanLvl3.trim().replace(/'/g, "''")}'` : 'NULL';
+        const sqlLvl4 = (cleanLvl4 && cleanLvl4.trim()) ? `'${cleanLvl4.trim().replace(/'/g, "''")}'` : 'NULL';
+
         await prisma.$executeRawUnsafe(`
           UPDATE sites
           SET code = '${cleanCode.replace(/'/g, "''")}',
@@ -1627,17 +1645,18 @@ export async function updateSite(req, res, next) {
               level = '${cleanLevel}',
               parentLocation = '${cleanParent.replace(/'/g, "''")}',
               fullPath = '${computedPath.replace(/'/g, "''")}',
-              locationLevel1 = '${cleanLvl1.replace(/'/g, "''")}',
-              locationLevel2 = '${cleanLvl2.replace(/'/g, "''")}',
-              locationLevel3 = '${cleanLvl3.replace(/'/g, "''")}',
-              locationLevel4 = '${cleanLvl4.replace(/'/g, "''")}',
+              locationLevel1 = ${sqlLvl1},
+              locationLevel2 = ${sqlLvl2},
+              locationLevel3 = ${sqlLvl3},
+              locationLevel4 = ${sqlLvl4},
               address = '${cleanAddress.replace(/'/g, "''")}',
               active = ${isAct ? 1 : 0},
               updatedAt = CURRENT_TIMESTAMP
           WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
         `);
       } catch (dbErr) {
-        console.warn('DB update sites skipped:', dbErr.message);
+        console.error('DB update sites error:', dbErr.message);
+        return res.status(500).json({ success: false, message: `Database error updating location: ${dbErr.message}` });
       }
     }
 
